@@ -1,0 +1,838 @@
+/***************************************************************************************************************
+	version control
+
+	date						version			changed by			ref					changes made
+	--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	31/05/2013						0.1				Pete Attfield	-		            file created in development
+	07/06/2013						0.2				Tomasz Pogoda						QAS, STU_ADD and VARIABLES and VALIDATION sections added
+
+
+	this file can be called using <<@>>, and requires WRF= in order to import & publish.
+	it contains all the functions called by Student Self Service.
+
+***************************************************************************************************************/
+
+
+/***********************************************************************************************
+Global VARIABLES SECTION
+************************************************************************************************/
+var flag = ""; // this variable is used in the styleQas1,styleQas3, and RadioLogic functions from task STU_ADD.
+			   //If this flag is set to 1 then the QAS will not be launched e.g if Postcode Not Know? button pressed.
+
+var accheight = 250;////////////////////////////////////////////
+var naheight = 150; //variables used to manipulate the iframe
+var pcdheight = 350;//size inside the modal radioLogic function
+var pcdheight1 = 450;//////////////////////////	/////////////////
+
+/***********************************************************************************************
+END Global VARIABLES SECTION
+************************************************************************************************/
+
+function notApplicant(stuStat){
+
+	if (stuStat =="A"){
+		$("div[id='progRow']").hide();
+	} else {
+		$("div[id='progRow']").show();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- resetModal - resets the modal to balnck after modal is closed
+//---------------------------------------------------------------------------------------------------------//
+
+function resetModal(){
+	$('#address-upd').attr("src", "");
+	$('#ModalLabel').html("");
+	$('#address-upd').height(0);
+	$('#btnCloseAdd,#btnBack,#btnQas,#btnDel').hide();
+	$('#btnCancel,#btnStore').show();
+	$('#address-upd').off('load'); // remove the load event from the iframe to prevent going to QAS
+	flag = ""; // set flag to null
+	$('#address-upd').css('overflow-y','');$('#address-upd').attr('scrolling','no');// disable scroling on iframe
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- storeAdd deleteAdd - clicks the hidden store or delete button in the task from moddal
+//---------------------------------------------------------------------------------------------------------//
+
+function storeAdd(iframe) {
+	$('#'+iframe+'').contents().find("*[data-uoeid='storeBtn']").trigger('click');
+
+}
+
+function deleteAdd(iframe) {
+	$('#'+iframe+'').contents().find("*[data-uoeid='deleteBtn']").trigger('click');
+
+}
+//---------------------------------------------------------------------------------------------------------//
+//--- resetModal - clicks the hidden exit button in the task STU_ADD
+//---------------------------------------------------------------------------------------------------------//
+
+function exitAdd(iframe) {
+
+	$('#'+iframe+'').contents().find("*[data-uoeid='exitBtn']").trigger('click');
+	//window.location = window.location.href;
+	var redirectUrl = window.location.href;
+		if(window.location.hash){
+		urlArr = redirectUrl.split("#");
+		redirectUrl = urlArr[0];
+	}
+		window.location = redirectUrl;
+
+}
+//---------------------------------------------------------------------------------------------------------//
+//--- ModalShow - Function to specify the src and header to be used in the modal(alows to reuse the same modal)
+//---------------------------------------------------------------------------------------------------------//
+
+function ModalShow(tkt_action, header_txt){
+		$('#address-upd').attr("src", tkt_action);
+		$('#ModalLabel').html(header_txt);
+		$('#address-upd').on('load', function () {$(this).height($('#address-upd').contents().height());
+		});
+		$('#CapAddMdl').trigger('click');
+}
+
+
+//---------------------------------------------------------------------------------------------------------//
+//--- EmergencyShow - Function to specify the src and header to be used in the modal(alows to reuse the same modal)
+//---------------------------------------------------------------------------------------------------------//
+
+function EmergencyShow(tkt_action, header_txt){
+		$('#snk-upd').height(520);
+		$('#snk-upd').attr("src", tkt_action);
+		$('#EmergencyLabel').html(header_txt);
+}
+//---------------------------------------------------------------------------------------------------------//
+//--- PersonalShow - Function to run the personal details modal
+//---------------------------------------------------------------------------------------------------------//
+
+function PersonalShow(tkt_action){
+		$('#addTsk').attr("src", tkt_action);
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- StuFusdShow - Function to run the student known as modal
+//---------------------------------------------------------------------------------------------------------//
+
+function stuFusdShow(tkt_action){
+		$('#fusdTsk').attr("src", tkt_action);
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- AccomShow - Function to run the Accomodation updates
+//---------------------------------------------------------------------------------------------------------//
+
+function accomShow(tkt_action){
+		$('#accomTsk').attr("src", tkt_action);
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- HearGenShow - Function to run Hear Update
+//---------------------------------------------------------------------------------------------------------//
+
+function HearGenShow(tkt_action){
+		$('#hearGen').attr("src", tkt_action);
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- couTaxShow - Function to run Council Tax Update
+//---------------------------------------------------------------------------------------------------------//
+
+function couTaxShow(tkt_action){
+		$('#couTax').attr("src", tkt_action);
+}
+
+
+//---------------------------------------------------------------------------------------------------------//
+//--- resetSnk - Function to reset the Emergency contact modal after the Cancel button is pressed
+//---------------------------------------------------------------------------------------------------------//
+function resetSnk(){
+	$('#snk-upd').attr("src", "");
+	$('#snk-upd').height(0);
+	$('#EmergencyLabel').html("");
+	$('#btnCloseSnk,#btnDelSnk').hide();
+    $('#btnCancelSnk,#btnStoreSnk,#btnClrl').show();
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- resetSnk - Function to reset the Personal Details modal after the Cancel button is pressed
+//---------------------------------------------------------------------------------------------------------//
+
+function resetPrs(){
+	$('#addTsk').attr("src", "");
+	$('#addTsk').contents().find("input").each(function(){$(this).val("");}); // null all fields
+	$('#addTsk').contents().find('*[id^="error"]').each(function(){$(this).hide();});
+	$('#addTsk').contents().find('*[id^="val"]').each(function(){$(this).removeClass('control-group error'); $(this).addClass('control-group');});
+	$('#btnClosePrs').hide();
+    $('#btnCancelPrs,#btnStorePrs').show();
+}
+/***********************************************************************************************
+SECTION OF THE FUNCTIONS USED IN THE TASK STU_ADD
+************************************************************************************************/
+
+//---------------------------------------------------------------------------------------------------------//
+//--- setDatepicker- this Function runs the  sits_attach_event(SITS GENERATED FUNCTION). Function sets the range
+//--- of the datapicker dates depends if the screen is for Current or Future address.
+//---------------------------------------------------------------------------------------------------------//
+
+function setDatepicker(addTime){
+
+	if (addTime=="AF"){
+		sits_attach_event(window,"load",function() {sits_date_picker("*[data-uoeid='fromDate']",true,+1,+2000);});
+	}
+	else if (addTime=="AC") {
+		sits_attach_event(window,"load",function() {sits_date_picker("*[data-uoeid='fromDate']",true,-6000,+2000);});
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- checkDates- this Function checks the date picked by user in datapicker parse it to the string and
+//--- format to the yymmdd so it can be compared with the todays date passed to the function as parrameter.
+//--- function also shows the error message if the value is in the future
+//---------------------------------------------------------------------------------------------------------//
+
+function checkDates(val,today,addTime){
+
+var date = $.datepicker.parseDate( "dd/M/yy",val);
+var dateConv = $.datepicker.formatDate( "yymmdd", date);
+var heigh = 0;
+
+if (addTime=="AC"){
+	if(dateConv > today){
+		$("#valid-date").show();
+		parent.$("#address-upd").height(parent.$("#address-upd").contents().height());
+		height = parent.$("#address-upd").contents().height()-$("#valid-date").height()-70;
+		$(".close").on('click', function(){
+		$("#valid-date").hide();
+		parent.$("#address-upd").height(height);
+		});
+	}else{
+		if($("#valid-date").is(":visible")){
+			$("#valid-date").hide();
+			parent.$("#address-upd").height(height);
+		}
+	}
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- formatDate- this Function save the answer from one quesstion to the other question where this is formated
+//--- in the display format to the &DYMMDD.This is used then in TCR to navigate to the future or current address add step
+//---------------------------------------------------------------------------------------------------------//
+
+function formatDate(){
+
+	$("*[data-uoeid='storeBtn']").on('click', function(){
+		var date = $("*[data-uoeid='fromDate']").val();
+		$("input[data-uoeid='dateFrm']").val(date);
+	});
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- radioLogic- this Function is the main function to manipulate the logic between radio buttons in the
+//--- task STU_ADD the logic is explained in the comments
+//---------------------------------------------------------------------------------------------------------//
+
+function radioLogic(reset,addType){
+	var code = $("*[data-uoeid='AddPstc']").val();
+	$("#pcod").attr("disabled", true);//disable the QAS button to avoid the QAS launch by Enter button press
+	parent.$("#btnStore").hide();
+	if(addType=="H"){  //execute if address type home
+		if(code=="" && parent.flag != "1"){ // check if the QAS has been choosen to enable/disable click of hiden QAS button
+			$('*[class="hidden-pcd"]').show(); //show the Postcode radio group
+			$("input[name='rdi-pcd']").on('change', function() { //execute on change of UK postcode radio buttons
+				resetRadioChange(reset);// function to null input fields and error messages
+				if ($("input[name='rdi-pcd']:checked").val() == 'Y'){ // if the radio button eql to yes
+					$("#pcod").attr("disabled", false);// enable the QAS button
+					$("#pcod").trigger('click'); //click hiden button to run QAS
+					$('*[class="hidden-add"]').show(); //show all hiden address fields
+					parent.$("#btnStore").hide();
+					//this line has been comented out as a part of the QAS upgrades - the new QAS is styled directly in the .jsp files on tomcat
+					//parent.$("#address-upd").on('load', function(){parent.styleQas();});// run the function to style the QAS doesn't work in IE
+					parent.$("#address-upd").height(parent.$("#address-upd").contents().height());//set the size of the window
+				}else if ($("input[name='rdi-pcd']:checked").val() == 'N'){ // if the radio button eql to no
+					$('*[class="hidden-add"]').show(); //show all hiden address fields
+					$("#hidden-pstc").hide(); // hide Postcode field as it will be stored in the ADD5 field for non UK addresses
+					$("#show-pstc").html("Postcode"); // add the lable Postcode to the ADD5 field
+					$("#AddTtac").hide();
+					parent.$("#btnStore").show();
+					parent.$("#address-upd").height(parent.$("#address-upd").contents().height()); //set the size of the window
+	    	 	}});
+		}else{// if window is loading back from the QAS screen do not click the QAS button again but display returned information from QAS screen
+			$("#radio-grp").hide(); //hide radio buttons for QAS save screen
+			$('*[class="hidden-add"]').show(); //show all hiden address fields
+			$("#show-pstc").html(""); // remove the lable Postcode to the ADD5 field
+			$("#AddTtac").hide();
+			parent.$("#btnStore").show();
+			parent.$("#address-upd").height(pcdheight);// addjust iframe window
+		}
+	}else if(addType=="C"){  //execute if address type session
+	    if(code==""  && parent.flag != "1"){ // check if the QAS has been choosen to enable/disable click of hiden QAS button
+		$('*[class="hidden-acc"]').show(); //show the UoE Acommodation radio group
+		$("input[name='rdi-acc']").on('change', function() { //execute on change of UoE Acommodation radio buttons
+			resetRadioChange(reset);// function to null input fields and error messages
+			if ($("input[name='rdi-acc']:checked").val() == 'Y'){ // if the radio button eql to yes
+				$("#future-exist").hide();// hide error message if future address exist
+				$('*[class="hidden-add"]').hide();  //hide all hiden address fields
+				$('*[class="hidden-pcd"]').hide(); // hide postcode field
+				$("#fromDate").show(); //show From Date field
+				$("#Add1").show(); // show ADD1 - Room number field
+				$("*[data-uoeid='AddTtac']").val("1");// set the Term time acc to University maintained property
+				$('*[class="hidden-UoEacc"]').show(); // show UoE accomodation Dynamic listbox
+				$("*[data-uoeid='UoEacc']").attr("mand","Y");// enable mandatory check
+				$("*[data-uoeid='Add1']").attr("placeholder","Room number ..."); // Add the Room numbar placeholder
+				$("#valid-date").hide();// hide error message
+				parent.$("#address-upd").height(accheight); // addjust iframe window
+				parent.$("#btnStore").show();
+			}else if ($("input[name='rdi-acc']:checked").val() == 'N'){ // if the radio button eql to no
+				parent.$("#btnStore").hide(); //hide Save button
+				$("*[data-uoeid='AddTtac']").val("");
+				$("#future-exist").hide();// hide error message if future address exist
+				$("input[name='rdi-pcd']").prop('checked', false); // null the postcode radio group values
+				$("*[data-uoeid='Add1']").attr("placeholder",""); // null the placeholder for room number
+				$("*[data-uoeid='UoEacc']").attr("mand","N");// disable hiden mandatory check
+			    $('*[class="hidden-UoEacc"]').hide(); // hide the UoE dynamic listbox
+				$('*[class="hidden-add"]').hide(); //hide all hiden address fields
+				$('*[class="hidden-pcd"]').show(); // display only the postcode radio buttons group
+				$("#valid-date").hide(); // hide error message
+				parent.$("#address-upd").height(naheight); // addjust iframe window
+			}});
+				$("input[name='rdi-pcd']").on('change', function() { //execute on change of UK postcode radio buttons
+					if ($("input[name='rdi-pcd']:checked").val() == 'Y'){ // if the radio button eql to yes
+						$("#AddTtac").show();
+						$("*[data-uoeid='UoEacc']").attr("mand","N");
+						$('*[class="hidden-add"]').show(); // show address input fields
+						$("#show-pstc").html(""); // remove the lable Postcode to the ADD5 field
+						$("#pcod").attr("disabled", false);// enable the QAS button
+						$("#pcod").trigger('click'); // click the hidden QAS button
+						parent.$("#btnStore").hide();
+						//this line has been comented out as a part of the QAS upgrades - the new QAS is styled directly in the .jsp files on tomcat
+						//parent.$("#address-upd").on('load', function(){parent.styleQas();});
+						parent.$("#address-upd").height(pcdheight);// addjust iframe window
+					}else if ($("input[name='rdi-pcd']:checked").val() == 'N'){ // if the radio button eql to no
+						$("#AddTtac").show();
+						$("*[data-uoeid='UoEacc']").attr("mand","N");
+						$('*[class="hidden-add"]').show();  // show address input fields
+						$("#hidden-pstc").hide(); // hide Postcode field as it will be stored in the ADD5 field for non UK addresses
+						$("#show-pstc").html("Postcode"); // add the lable Postcode to the ADD5 field
+						parent.$("#btnStore").show();
+						parent.$("#address-upd").height(pcdheight1);
+	    			 }});
+		}else{// if window is loading back from the QAS screen do not click the QAS button again but display returned information from QAS screen(Enter the address manually)
+			$('*[class="hidden-add"],input').show(); //show all hiden address fields
+			$("#show-pstc").html(""); // remove the lable Postcode from the ADD5 field
+			$("#pcod,#radio-grp,.help-inline,#future-exist,*[data-uoeid='exitBtn'],*[data-uoeid='storeBtn'],*[data-uoeid='storeBtn'],*[data-uoeid='dateFrm']").hide();
+			$("*[data-uoeid='AddTtac']").attr("mand","Y");
+			$("*[data-uoeid='UoEacc']").attr("mand","N");
+			parent.$("#btnStore").show();
+			parent.$("#address-upd").height(pcdheight);// addjust iframe window
+		}
+	}
+}
+
+function resetRadioChange(reset){
+	$("input[type='text']:visible").each(function() {$(this).val("");});// reset the input fields when changing radio button
+	$("*[data-uoeid='fromDate']").val(reset); // reset the From Date
+	$("*[data-uoeid='UoEacc']").val("");
+}
+
+/***********************************************************************************************
+SECTION OF THE VALIDATIONS USED IN THE TASK STU_ADD
+************************************************************************************************/
+//---------------------------------------------------------------------------------------------------------//
+//--- validatePostcode- validate postcode field and hide and show bootstrap validations error
+//---------------------------------------------------------------------------------------------------------//
+
+function validatePostcode(){
+
+var Postcode = /^(((([A-PR-UWYZ][0-9][0-9A-HJKS-UW]?)|([A-PR-UWYZ][A-HK-Y][0-9][0-9ABEHMNPRV-Y]?))\s{0,2}[0-9]([ABD-HJLNP-UW-Z]{2}))|(GIR\s{0,2}0AA))$/i;
+var code = $("*[data-uoeid='AddPstc']").val();
+	if ($("*[data-uoeid='AddPstc']").is(":visible")){
+		if(Postcode.test(code) == false){
+				$("#errorPstc").show();
+				$("#valPstc").attr('class', 'control-group error');
+		}else{
+				$("#errorPstc").hide();
+				$("#valPstc").attr('class', 'control-group');
+		}
+	}
+}
+//---------------------------------------------------------------------------------------------------------//
+//--- validatePhone- validate phone field and hide and show bootstrap validations error
+//---------------------------------------------------------------------------------------------------------//
+
+function validatePhone(frame){
+
+var Phone =/^[0-9()\-+*#\ ]+$/;
+var Phnvalue =  $("*[data-uoeid='AddPhone']").val();
+	if ($("*[data-uoeid='AddPhone']").is(":visible")){
+		if(Phone.test(Phnvalue) == false && Phnvalue != ""){
+				if($("#errorPhone").is(":hidden")){
+				$("#errorPhone").show();
+				$("#valPhone").attr('class', 'control-group error');
+				$("#valAddPhone").attr('class', 'control-group error');
+				parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()+18); //set the size of the window
+				}
+		}else{
+				if($("#errorPhone").is(":visible")){
+				$("#errorPhone").hide();
+				$("#valPhone").attr('class', 'control-group');
+				$("#valAddPhone").attr('class', 'control-group');
+				parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()-18); //set the size of the window
+		}}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- validateCarer- if your a carer then you should have dependands, this enforces that rule and hides/displays the warnings
+//---------------------------------------------------------------------------------------------------------//
+
+function validateCarer(){
+
+    var error       = false;
+    var $carer      = $("*[data-uoeid='carerStatus']").val();
+    var $dependant  = $("*[data-uoeid='dependantStatus']").val();
+
+    if($carer === '02' && $dependant === '03' ){
+        if($('#errorDependant').is(':hidden')){
+            $('#errorDependant').attr('style', 'display:');
+            $('#valDependant').attr('class', 'control-group error');
+        }
+    } else {
+        if($('#errorDependant').is(':visible')){
+            $('#errorDependant').attr('style', 'display:none');
+            $('#valDependant').attr('class', 'control-group');
+        }
+        error = true;
+    }
+
+    return error;
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- validateOther- validate all phones fields and hide and show bootstrap validations error
+//---------------------------------------------------------------------------------------------------------//
+
+function validateOther(id){
+
+var Phone =/^[0-9()\-+*#\ ]+$/;
+var Phnvalue =  $("*[data-uoeid='"+id+"']").val();
+
+	if ($("*[data-uoeid='"+id+"']").is(":visible")){
+		if(Phone.test(Phnvalue) == false && Phnvalue != ""){
+				if($("#error"+id+"").is(":hidden")){
+				$("#error"+id+"").show();
+				$("#val"+id+"").attr('class', 'control-group error');
+				}
+		}else{
+				if($("#error"+id+"").is(":visible")){
+				$("#error"+id+"").hide();
+				$("#val"+id+"").attr('class', 'control-group');
+
+		}	}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- validateMand- validate mandatory field and hide and show bootstrap validations error - used on change
+//---------------------------------------------------------------------------------------------------------//
+function validateMand(value, id , frame){
+
+	if(value==""){
+			if($("#error"+id+"").is(":hidden")){
+			$("#error"+id+"").show();
+			$("#val"+id+"").attr('class', 'control-group error');
+			parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()+18); //set the size of the window
+			}
+		}else{
+			if($("#error"+id+"").is(":visible")){
+			$("#error"+id+"").hide();
+			$("#val"+id+"").attr('class', 'control-group');
+			parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()-18); //set the size of the window
+		}
+	}
+	validatePhone(frame);
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- validateAll- validate mandatory field and hide and show bootstrap validations error - used on final
+//--- Store button click. If there are no error the modal is closed
+//---------------------------------------------------------------------------------------------------------//
+
+function validateAll(frame){
+var Postcode = /^(((([A-PR-UWYZ][0-9][0-9A-HJKS-UW]?)|([A-PR-UWYZ][A-HK-Y][0-9][0-9ABEHMNPRV-Y]?))\s{0,2}[0-9]([ABD-HJLNP-UW-Z]{2}))|(GIR\s{0,2}0AA))$/i;
+var Phone =/^[0-9()\-+*#\ ]+$/;
+var Phnvalue =  $("*[data-uoeid='AddPhone']").val();
+var code = $("*[data-uoeid='AddPstc']").val();
+
+var error1 ="";
+var error2 ="";
+var error3 ="";
+var error4 ="";
+
+	if ($("*[data-uoeid='AddPhone']").is(":visible")){
+		if(Phone.test(Phnvalue) == false && Phnvalue != ""){
+				$("#errorPhone").show();
+				$("#valPhone").attr('class', 'control-group error');
+				error1="Y";
+		}else{
+				$("#errorPhone").hide();
+				$("#valPhone").attr('class', 'control-group');
+				error1="N";
+		}
+	}else{error1="N";}
+
+	if ($("*[data-uoeid='AddPstc']").is(":visible")){
+		if(Postcode.test(code) == false){
+				$("#errorPstc").show();
+				$("#valPstc").attr('class', 'control-group error');
+				error2="Y";
+		}else{
+				$("#errorPstc").hide();
+				$("#valPstc").attr('class', 'control-group');
+				error2="N";
+		}
+	}else{error2="N";}
+
+		$("*[mand='Y']").each(function() {
+			if($(this).val()=="") {
+				$("#error"+$(this).attr('data-uoeid')+"").show();
+				$("#val"+$(this).attr('data-uoeid')+"").attr('class', 'control-group error');
+				error3 = error3+"Y";
+			}else{
+				$("#error"+$(this).attr('data-uoeid')+"").hide();
+				$("#val"+$(this).attr('data-uoeid')+"").attr('class', 'control-group');
+				error3 =error3+"N";
+		}});
+
+
+	if (error3.indexOf('Y') === -1) {error4="N";}else{error4="Y";}
+	if(error1+error2+error4=="NNN"){return true;}else{return false;}
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- clearForm- clears all fields and validation messages and set the height of the iframe to the original height
+//--- by calculating it as a multiply of validation messages
+//---------------------------------------------------------------------------------------------------------//
+
+function clearForm(frame) {
+
+$("#"+frame+"").height(520); // set the iframe height
+$("#snk-upd").contents().find("*[check='Y']").each(function(){$(this).val("");}); // null all fields
+$("#snk-upd").contents().find('*[id^="error"]').each(function(){$(this).hide();});
+$("#snk-upd").contents().find('*[id^="val"]').each(function(){$(this).removeClass('control-group error'); $(this).addClass('control-group');});//hide validation errors
+
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- validateSnk- validate mandatory field and hide and show bootstrap validations error - used on final
+//--- Store button click. If there are no error the modal is closed - for Emergency Contact task
+//---------------------------------------------------------------------------------------------------------//
+
+function validateSnk(frame){
+	// call variables
+	var Phone =/^[0-9()\-+*#\ ]+$/;
+	var Email =/^\w+(['\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+	var Phnvalue =  $("*[data-uoeid='AddPhone']").val();
+	var Phnvalue1 =  $("*[data-uoeid='Snk-phn2']").val();
+	var Phnvalue2 =  $("*[data-uoeid='Snk-phn3']").val();
+	var mail = $("*[data-uoeid='Email']").val();
+
+	var error1 ="";
+	var error2 ="";
+	var error3 ="";
+	var error4 ="";
+	var error5 ="";
+	var error6 ="";
+	var change="";
+
+	$("*[check='Y']").each(function(){change = change + $(this).val(); });// check if any changes has benn done to the input fields
+
+	if(change != "") { // if changes made by user to one from the input fields validate
+
+			if($("#valid-data").is(":visible")){ //hide the error message if visible
+						$("#valid-data").hide();
+						parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()-100); //set the size of the window
+				}
+// i have deleted the call in the tte to this function christine
+		error1="N";
+
+			if(Phone.test(Phnvalue) == false && Phnvalue != "" ){ // check if phone is valid see comments above simmilar logic
+					if($("#errorPhone").is(":hidden")){
+								$("#errorPhone").show();
+								$("#valPhone").attr('class', 'control-group error');
+								$("#valAddPhone").attr('class', 'control-group error');
+								error2="Y";
+								parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()+18); //set the size of the window
+						}
+			}else{
+					error2="N";
+					if($("#errorPhone").is(":visible")){
+								$("#errorPhone").hide();
+								$("#valPhone").attr('class', 'control-group');
+								$("#valAddPhone").attr('class', 'control-group');
+								parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()-18); //set the size of the window
+						}
+			}
+
+			if(Phone.test(Phnvalue1) == false && Phnvalue1 != "" ){ // check if phone 2 is valid see comments above simmilar logic
+					if($("#errorSnk-phn2").is(":hidden")){
+								$("#errorSnk-phn2").show();
+								$("#valSnk-phn2").attr('class', 'control-group error');
+								error5="Y";
+						}
+			}else{
+					error5="N";
+					if($("#errorSnk-phn2").is(":visible")){
+								$("#errorSnk-phn2").hide();
+								$("#valSnk-phn2").attr('class', 'control-group');
+						}
+			}
+
+			if(Phone.test(Phnvalue2) == false && Phnvalue2 != "" ){ // check if phone 3 is valid see comments above simmilar logic
+					if($("#errorSnk-phn3").is(":hidden")){
+								$("#errorSnk-phn3").show();
+								$("#valSnk-phn3").attr('class', 'control-group error');
+								error6="Y";
+						}
+			}else{
+					error6="N";
+					if($("#errorSnk-phn3").is(":visible")){
+								$("#errorSnk-phn3").hide();
+								$("#valSnk-phn3").attr('class', 'control-group');
+						}
+			}
+
+			$("*[mandatory='Y']").each(function() { // check all mandatory fields
+					if($(this).val()=="") { //display validation errors if no value entered and if error is hidden
+									if($("#error"+$(this).attr('data-uoeid')+"").is(":hidden")){
+									parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()+18); //set the size of the window
+									}
+									$("#error"+$(this).attr('data-uoeid')+"").show();
+									$("#val"+$(this).attr('data-uoeid')+"").attr('class', 'control-group error');
+									error3 = error3+"Y"; // update the error3 flag to Y
+					}else{ //hide validation errors if value entered and if error is visible
+							if($("#error"+$(this).attr('data-uoeid')+"").is(":visible")){
+								parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()-18); //set the size of the window
+							}
+							error3 = error3+"N"; // update the error3 flag to N
+							$("#error"+$(this).attr('data-uoeid')+"").hide();
+							$("#val"+$(this).attr('data-uoeid')+"").attr('class', 'control-group');
+					}
+			});
+
+			if (error3.indexOf('Y') === -1) {error4="N";}else{error4="Y";} // check if there was an error in any from the mandatory fields and set the flag error4
+			if(error1+error2+error4+error5+error6=="NNNNN"){return true;}else{return false;}// if no errors go to the next step and close the modal
+	}else{ // if no changes made by user to one from the input fields display the error message
+			$("#valid-data").show(); parent.$("#"+frame+"").height(parent.$("#"+frame+"").height()+100); //set the size of the window
+			return false;
+	}
+
+}
+
+//---------------------------------------------------------------------------------------------------------//
+//--- validatePrs- validate mandatory field and hide and show bootstrap validations error - used on final
+//--- Store button click. If there are no error the modal is closed - for Personal Details task
+//---------------------------------------------------------------------------------------------------------//
+
+function validatePrs(){
+	// call variables
+	var Phone =/^[0-9()\-+*#\ ]+$/;
+	var Email =/^\w+(['\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,6})+$/;
+	var Phnvalue =  $("*[data-uoeid='AddPhone']").val();
+	var mail = $("*[data-uoeid='Email']").val();
+
+	var error1 ="";
+	var error2 ="";
+
+	error1="N";
+
+    if(Phone.test(Phnvalue) == false && Phnvalue != "" ){ // check if phone is valid see comments above simmilar logic
+            if($("#errorPhone").is(":hidden")){
+                        $("#errorPhone").show();
+                        $("#valPhone").attr('class', 'control-group error');
+                        error2="Y";
+                }
+    }else{
+            error2="N";
+            if($("#errorPhone").is(":visible")){
+                        $("#errorPhone").hide();
+                        $("#valPhone").attr('class', 'control-group');
+                }
+    }
+
+    if(error1+error2=="NN"){return true;}else{return false;}// if no errors go to the next step and close the modal
+}
+
+//-------------------------------------------------------------------------------------------------//
+//----------------------Function for tracking events on Google Analytics---------------------------//
+//-------------------------------------------------------------------------------------------------//
+
+function recordAction(whichButton,action){
+	try {
+		_gaq.push(['_trackEvent', whichButton, action]);
+	}
+	catch(err)
+	{
+		return true; /*This is just a regular link with nothing to do with anything*/
+	}
+}
+
+
+/* ---------------------------------------------------------------------------------------------------------------------
+Processing
+Function used to display prosessing modal after the update button is clicked
+--------------------------------------------------------------------------------------------------------------------- */
+
+function Processing(){
+	$("#processMdl").trigger('click');
+}
+
+
+//---------------------------------------------------------------------------------------------------------//
+//--- modalGenericShow- show a modal with the given title (like stuFusdShow, couTaxShow etc. but more
+//--- flexible and with a preloader so you don't get odd flashes of old content)
+//---------------------------------------------------------------------------------------------------------//
+function modalGenericShow( title, src ) {
+    var $frame = $('#genericModalFrame');
+    var $loader = $('#genericModalLoader');
+    var $title = $('#genericModalLabel');
+
+    // Set the modal title
+    $title.html( title );
+
+    // Show the loader
+    $loader.removeClass('hidden');
+    $frame.addClass('hidden');
+
+    // Reset the buttons
+	$('#btnStoreGeneric,#btnCancelGeneric').show();
+	$('#btnCloseGeneric').hide();
+
+    // When loaded, update the frame height
+    $frame.on('load', function() {
+        $frame.off('load');
+        // Hide the loader
+        $loader.addClass('hidden');
+        $frame.removeClass('hidden');
+        // Resize the iframe to fit its contents (removes unnecessary scrollbars)
+        $frame.height($frame.contents().find('body').height()+20);
+    });
+
+    // Set the frame to the provided URL
+    $frame.attr('src', src);
+}
+
+// When the modal is complete, the "store" buttons get hidden and a close one appears
+function modalGenericComplete() {
+    $('#btnStoreGeneric,#btnCancelGeneric').hide();
+	$('#btnCloseGeneric').show();
+}
+
+/**
+ * @function loadSelfServicePage
+ * @description loads JS specific to a page.
+ * @param pageId {string}
+ */
+function loadSelfServicePage(pageId) {
+
+    switch(pageId) {
+        case 'progTab':
+            uoe.require(['templating'], function() {
+                uoe.templating.load(
+                    {
+                        templates: ['programme.concessionsTable'],
+                        partials: [
+                            {
+                                partial: 'concessionsTableRow',
+                                template: 'programme.concessionsTableRow'
+                            }
+                        ],
+                        sharedPartials: ['button', 'icon'],
+                        sharedHelpers: ['columns', 'genericTable']
+                    },
+                    function() {
+                        var vars = $('[data-uoeid="concessionsJSON"]').html();
+                        vars = JSON.parse(vars);
+                        var concessions = vars.concessions;
+
+                        vars = $('[data-uoeid="historicExtensionsJSON"]').html();
+                        vars = JSON.parse(vars);
+                        var historicExtensions = vars.historicExtensions;
+
+                        $.each(historicExtensions, function(index, extension) {
+                            concessions.totals.extension = concessions.totals.extension + extension.noMonths;
+                            concessions.extensions.push(extension);
+                        });
+
+                        $('#progConcBlock').html(Handlebars.template.programme.concessionsTable({concessions: concessions, studentView: true}));
+                    }
+                );
+            });
+
+            return true;
+            break;
+        case 'researchTab':
+            uoe.require(['templating'], function() {
+	                uoe.templating.load(
+                    {
+                        templates: ['research.thesisSubmissionAttempt'],
+                        partials: [
+                            {
+                                partial: 'thesisSubmissionAttemptBlock',
+                                template: 'research.thesisSubmissionAttemptBlock'
+                            },
+                            {
+                                partial: 'thesisSubmissionAttemptStatusCell',
+                                template: 'research.thesisSubmissionAttemptStatusCell'
+                            },
+                            {
+                                partial: 'thesisSubmissionAttemptRow',
+                                template: 'research.thesisSubmissionAttemptRow'
+                            },
+                            {
+                                partial: 'examinerBlock',
+                                template: 'research.examinerBlock'
+                            }
+                        ],
+                        sharedPartials: ['button', 'icon'],
+                        sharedHelpers: ['columns', 'genericTable']
+                    },
+                    function() {
+                        // Grab the JSON required.
+                        // Submissions
+                        var vars = $('[data-uoeid="submissionsJSON"]').html();
+                        vars = JSON.parse(vars);
+                        var submissions = vars.submissions;
+
+                        // Examiners
+                        vars = $('[data-uoeid="examinersJSON"]').html();
+                        vars = JSON.parse(vars);
+                        var examiners = vars.examiners;
+
+                        // Render the workflow.
+                        uoe.templating.makeHelperFromTemplate('thesisSubmissionAttemptBlock', Handlebars.template.research.thesisSubmissionAttemptBlock);
+                        uoe.templating.makeHelperFromTemplate('thesisSubmissionAttemptRow', Handlebars.template.research.thesisSubmissionAttemptRow);
+                        $.each(submissions, function(index, submission) {
+                            submission.bootstrap2 = true;
+                            submission.examiners = [];
+                            $.each(vars.examiners, function(index2, examiner) {
+                                if (examiner.attemptNo === submission.attemptNo) {
+                                    submission.examiners.push(examiner);
+                                    return true;
+                                }
+                            });
+
+                            $('[data-uoeid="thesisSubmissions"]').append(Handlebars.template.research.thesisSubmissionAttempt(submission));
+                        });
+
+                        // Render the concessions.
+
+                    });
+            });
+
+            return true;
+            break;
+    }
+}
